@@ -17,6 +17,7 @@ import android.widget.Button;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
+import com.parrot.arsdk.arcommands.ARCOMMANDS_JUMPINGSUMO_ANIMATIONS_JUMP_TYPE_ENUM;
 import com.parrot.arsdk.arcontroller.ARCONTROLLER_DEVICE_STATE_ENUM;
 import com.parrot.arsdk.arcontroller.ARCONTROLLER_DICTIONARY_KEY_ENUM;
 import com.parrot.arsdk.arcontroller.ARCONTROLLER_ERROR_ENUM;
@@ -50,19 +51,12 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
     public ARDiscoveryDeviceService service;
     public ARDiscoveryDevice device;
 
-    private Button emergencyBt;
-    private Button takeoffBt;
-    private Button landingBt;
-
-    private Button gazUpBt;
-    private Button gazDownBt;
-    private Button yawLeftBt;
-    private Button yawRightBt;
+    private Button jumBt;
+    private Button turnLeftBt;
+    private Button turnRightBt;
 
     private Button forwardBt;
     private Button backBt;
-    private Button rollLeftBt;
-    private Button rollRightBt;
 
     private TextView batteryLabel;
 
@@ -71,7 +65,7 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
     private RelativeLayout view;
 
     // video vars
-    private static final String VIDEO_MIME_TYPE = "video/avc";
+    private static final String VIDEO_MIME_TYPE = MediaFormat.MIMETYPE_VIDEO_AVC;
     private static final int VIDEO_DEQUEUE_TIMEOUT = 33000;
     private static final int VIDEO_WIDTH = 640;
     private static final int VIDEO_HEIGHT = 368;
@@ -131,42 +125,8 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
     {
         view = (RelativeLayout) findViewById(R.id.piloting_view);
 
-        emergencyBt = (Button) findViewById(R.id.emergencyBt);
-        emergencyBt.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v)
-            {
-                if ((deviceController != null) && (deviceController.getFeatureARDrone3() != null))
-                {
-                    ARCONTROLLER_ERROR_ENUM error = deviceController.getFeatureARDrone3().sendPilotingEmergency();
-                }
-            }
-        });
-
-        takeoffBt = (Button) findViewById(R.id.takeoffBt);
-        takeoffBt.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v)
-            {
-                if ((deviceController != null) && (deviceController.getFeatureARDrone3() != null))
-                {
-                    //send takeOff
-                    ARCONTROLLER_ERROR_ENUM error = deviceController.getFeatureARDrone3().sendPilotingTakeOff();
-                }
-            }
-        });
-        landingBt = (Button) findViewById(R.id.landingBt);
-        landingBt.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v)
-            {
-                if ((deviceController != null) && (deviceController.getFeatureARDrone3() != null))
-                {
-                    //send landing
-                    ARCONTROLLER_ERROR_ENUM error = deviceController.getFeatureARDrone3().sendPilotingLanding();
-                }
-            }
-        });
-
-        gazUpBt = (Button) findViewById(R.id.gazUpBt);
-        gazUpBt.setOnTouchListener(new View.OnTouchListener() {
+        jumBt = (Button) findViewById(R.id.jumBt);
+        jumBt.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event)
             {
@@ -176,17 +136,12 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
                         v.setPressed(true);
                         if (deviceController != null)
                         {
-                            deviceController.getFeatureARDrone3().setPilotingPCMDGaz((byte) 50);
+                            deviceController.getFeatureJumpingSumo().sendAnimationsJump(ARCOMMANDS_JUMPINGSUMO_ANIMATIONS_JUMP_TYPE_ENUM.ARCOMMANDS_JUMPINGSUMO_ANIMATIONS_JUMP_TYPE_HIGH );
                         }
                         break;
 
                     case MotionEvent.ACTION_UP:
                         v.setPressed(false);
-                        if (deviceController != null)
-                        {
-                            deviceController.getFeatureARDrone3().setPilotingPCMDGaz((byte)0);
-
-                        }
                         break;
 
                     default:
@@ -198,72 +153,9 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
             }
         });
 
-        gazDownBt = (Button) findViewById(R.id.gazDownBt);
-        gazDownBt.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event)
-            {
-                switch (event.getAction())
-                {
-                    case MotionEvent.ACTION_DOWN:
-                        v.setPressed(true);
-                        if (deviceController != null)
-                        {
-                            deviceController.getFeatureARDrone3().setPilotingPCMDGaz((byte)-50);
 
-                        }
-                        break;
-
-                    case MotionEvent.ACTION_UP:
-                        v.setPressed(false);
-                        if (deviceController != null)
-                        {
-                            deviceController.getFeatureARDrone3().setPilotingPCMDGaz((byte)0);
-                        }
-                        break;
-
-                    default:
-
-                        break;
-                }
-
-                return true;
-            }
-        });
-        yawLeftBt = (Button) findViewById(R.id.yawLeftBt);
-        yawLeftBt.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event)
-            {
-                switch (event.getAction())
-                {
-                    case MotionEvent.ACTION_DOWN:
-                        v.setPressed(true);
-                        if (deviceController != null)
-                        {
-                            deviceController.getFeatureARDrone3().setPilotingPCMDYaw((byte)-50);
-
-                        }
-                        break;
-
-                    case MotionEvent.ACTION_UP:
-                        v.setPressed(false);
-                        if (deviceController != null)
-                        {
-                            deviceController.getFeatureARDrone3().setPilotingPCMDYaw((byte) 0);
-                        }
-                        break;
-
-                    default:
-
-                        break;
-                }
-
-                return true;
-            }
-        });
-        yawRightBt = (Button) findViewById(R.id.yawRightBt);
-        yawRightBt.setOnTouchListener(new View.OnTouchListener()
+        turnRightBt = (Button) findViewById(R.id.turnRightBt);
+        turnRightBt.setOnTouchListener(new View.OnTouchListener()
         {
             @Override
             public boolean onTouch(View v, MotionEvent event)
@@ -274,7 +166,8 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
                         v.setPressed(true);
                         if (deviceController != null)
                         {
-                            deviceController.getFeatureARDrone3().setPilotingPCMDYaw((byte) 50);
+                            deviceController.getFeatureJumpingSumo().setPilotingPCMDTurn((byte) 50);
+                            deviceController.getFeatureJumpingSumo().setPilotingPCMDFlag((byte) 1);
 
                         }
                         break;
@@ -283,7 +176,40 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
                         v.setPressed(false);
                         if (deviceController != null)
                         {
-                            deviceController.getFeatureARDrone3().setPilotingPCMDYaw((byte) 0);
+                            deviceController.getFeatureJumpingSumo().setPilotingPCMDTurn((byte) 0);
+                        }
+                        break;
+
+                    default:
+
+                        break;
+                }
+
+                return true;
+            }
+        });
+
+        turnLeftBt = (Button) findViewById(R.id.turnLeftBt);
+        turnLeftBt.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event)
+            {
+                switch (event.getAction())
+                {
+                    case MotionEvent.ACTION_DOWN:
+                        v.setPressed(true);
+                        if (deviceController != null)
+                        {
+                            deviceController.getFeatureJumpingSumo().setPilotingPCMDTurn((byte) -50);
+                            deviceController.getFeatureJumpingSumo().setPilotingPCMDFlag((byte) 1);
+                        }
+                        break;
+
+                    case MotionEvent.ACTION_UP:
+                        v.setPressed(false);
+                        if (deviceController != null)
+                        {
+                            deviceController.getFeatureJumpingSumo().setPilotingPCMDTurn((byte) 0);
                         }
                         break;
 
@@ -308,8 +234,8 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
                         v.setPressed(true);
                         if (deviceController != null)
                         {
-                            deviceController.getFeatureARDrone3().setPilotingPCMDPitch((byte) 50);
-                            deviceController.getFeatureARDrone3().setPilotingPCMDFlag((byte) 1);
+                            deviceController.getFeatureJumpingSumo().setPilotingPCMDSpeed((byte) 50);
+                            deviceController.getFeatureJumpingSumo().setPilotingPCMDFlag((byte) 1);
                         }
                         break;
 
@@ -317,8 +243,8 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
                         v.setPressed(false);
                         if (deviceController != null)
                         {
-                            deviceController.getFeatureARDrone3().setPilotingPCMDPitch((byte) 0);
-                            deviceController.getFeatureARDrone3().setPilotingPCMDFlag((byte) 0);
+                            deviceController.getFeatureJumpingSumo().setPilotingPCMDSpeed((byte) 0);
+                            deviceController.getFeatureJumpingSumo().setPilotingPCMDFlag((byte) 0);
                         }
                         break;
 
@@ -339,10 +265,9 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
                 {
                     case MotionEvent.ACTION_DOWN:
                         v.setPressed(true);
-                        if (deviceController != null)
-                        {
-                            deviceController.getFeatureARDrone3().setPilotingPCMDPitch((byte)-50);
-                            deviceController.getFeatureARDrone3().setPilotingPCMDFlag((byte)1);
+                        if (deviceController != null) {
+                            deviceController.getFeatureJumpingSumo().setPilotingPCMDSpeed((byte) -50);
+                            deviceController.getFeatureJumpingSumo().setPilotingPCMDFlag((byte) 1);
                         }
                         break;
 
@@ -350,75 +275,8 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
                         v.setPressed(false);
                         if (deviceController != null)
                         {
-                            deviceController.getFeatureARDrone3().setPilotingPCMDPitch((byte)0);
-                            deviceController.getFeatureARDrone3().setPilotingPCMDFlag((byte)0);
-                        }
-                        break;
-
-                    default:
-
-                        break;
-                }
-
-                return true;
-            }
-        });
-        rollLeftBt = (Button) findViewById(R.id.rollLeftBt);
-        rollLeftBt.setOnTouchListener(new View.OnTouchListener()
-        {
-            @Override
-            public boolean onTouch(View v, MotionEvent event)
-            {
-                switch (event.getAction())
-                {
-                    case MotionEvent.ACTION_DOWN:
-                        v.setPressed(true);
-                        if (deviceController != null)
-                        {
-                            deviceController.getFeatureARDrone3().setPilotingPCMDRoll((byte) -50);
-                            deviceController.getFeatureARDrone3().setPilotingPCMDFlag((byte) 1);
-                        }
-                        break;
-
-                    case MotionEvent.ACTION_UP:
-                        v.setPressed(false);
-                        if (deviceController != null)
-                        {
-                            deviceController.getFeatureARDrone3().setPilotingPCMDRoll((byte) 0);
-                            deviceController.getFeatureARDrone3().setPilotingPCMDFlag((byte) 0);
-                        }
-                        break;
-
-                    default:
-
-                        break;
-                }
-
-                return true;
-            }
-        });
-        rollRightBt = (Button) findViewById(R.id.rollRightBt);
-        rollRightBt.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event)
-            {
-                switch (event.getAction())
-                {
-                    case MotionEvent.ACTION_DOWN:
-                        v.setPressed(true);
-                        if (deviceController != null)
-                        {
-                            deviceController.getFeatureARDrone3().setPilotingPCMDRoll((byte)50);
-                            deviceController.getFeatureARDrone3().setPilotingPCMDFlag((byte)1);
-                        }
-                        break;
-
-                    case MotionEvent.ACTION_UP:
-                        v.setPressed(false);
-                        if (deviceController != null)
-                        {
-                            deviceController.getFeatureARDrone3().setPilotingPCMDRoll((byte)0);
-                            deviceController.getFeatureARDrone3().setPilotingPCMDFlag((byte)0);
+                            deviceController.getFeatureJumpingSumo().setPilotingPCMDSpeed((byte) 0);
+                            deviceController.getFeatureJumpingSumo().setPilotingPCMDFlag((byte) 0);
                         }
                         break;
 
@@ -531,7 +389,7 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
         {
             case ARCONTROLLER_DEVICE_STATE_RUNNING:
                 //The deviceController is started
-                Log.i(TAG, "ARCONTROLLER_DEVICE_STATE_RUNNING ....." );
+                Log.i(TAG, "ARCONTROLLER_DEVICE_STATE_RUNNING .....");
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -539,7 +397,7 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
                         alertDialog.dismiss();
                     }
                 });
-                deviceController.getFeatureARDrone3().sendMediaStreamingVideoEnable((byte)1);
+                deviceController.getFeatureJumpingSumo().sendMediaStreamingVideoEnable((byte)1);
                 break;
 
             case ARCONTROLLER_DEVICE_STATE_STOPPED:
@@ -666,7 +524,6 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
             }
         }
 
-
         readyLock.unlock();
     }
 
@@ -674,7 +531,7 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
     @Override
     public void onFrameTimeout(ARDeviceController deviceController)
     {
-        //Log.i(TAG, "onFrameTimeout ..... " );
+        Log.i(TAG, "onFrameTimeout ..... " );
     }
 
     //region video
@@ -735,13 +592,15 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
     @SuppressLint("NewApi")
     private void configureMediaCodec()
     {
-        MediaFormat format = MediaFormat.createVideoFormat("video/avc", VIDEO_WIDTH, VIDEO_HEIGHT);
+        MediaFormat format = MediaFormat.createVideoFormat(VIDEO_MIME_TYPE, VIDEO_WIDTH, VIDEO_HEIGHT);
         format.setByteBuffer("csd-0", csdBuffer);
+        //format.setInteger(MediaFormat.KEY_FRAME_RATE, 15);
 
         mediaCodec.configure(format, sfView.getHolder().getSurface(), null, 0);
         mediaCodec.start();
 
         buffers = mediaCodec.getInputBuffers();
+
 
         isCodecConfigured = true;
     }
@@ -763,11 +622,11 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
 
     public ByteBuffer getCSD(ARFrame frame)
     {
-        int spsSize = -1;
+        int spsSize;
         if (frame.isIFrame())
         {
             byte[] data = frame.getByteData();
-            int searchIndex = 0;
+            int searchIndex;
             // we'll need to search the "00 00 00 01" pattern to find each header size
             // Search start at index 4 to avoid finding the SPS "00 00 00 01" tag
             for (searchIndex = 4; searchIndex <= frame.getDataSize() - 4; searchIndex ++)
