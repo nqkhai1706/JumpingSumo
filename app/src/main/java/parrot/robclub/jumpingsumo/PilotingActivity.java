@@ -4,8 +4,11 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.media.MediaCodec;
 import android.media.MediaFormat;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
@@ -14,6 +17,7 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
@@ -34,7 +38,9 @@ import com.parrot.arsdk.ardiscovery.ARDiscoveryDeviceNetService;
 import com.parrot.arsdk.ardiscovery.ARDiscoveryDeviceService;
 import com.parrot.arsdk.ardiscovery.ARDiscoveryException;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -77,13 +83,15 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
     private boolean waitForIFrame = true;
     private ByteBuffer [] buffers;
 
-    @Override
+
+
+        @Override
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_piloting);
 
-        initIHM ();
+        initIHM();
         initVideoVars();
 
         Intent intent = getIntent();
@@ -128,15 +136,12 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
         jumBt = (Button) findViewById(R.id.jumBt);
         jumBt.setOnTouchListener(new View.OnTouchListener() {
             @Override
-            public boolean onTouch(View v, MotionEvent event)
-            {
-                switch (event.getAction())
-                {
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
                         v.setPressed(true);
-                        if (deviceController != null)
-                        {
-                            deviceController.getFeatureJumpingSumo().sendAnimationsJump(ARCOMMANDS_JUMPINGSUMO_ANIMATIONS_JUMP_TYPE_ENUM.ARCOMMANDS_JUMPINGSUMO_ANIMATIONS_JUMP_TYPE_HIGH );
+                        if (deviceController != null) {
+                            deviceController.getFeatureJumpingSumo().sendAnimationsJump(ARCOMMANDS_JUMPINGSUMO_ANIMATIONS_JUMP_TYPE_ENUM.ARCOMMANDS_JUMPINGSUMO_ANIMATIONS_JUMP_TYPE_HIGH);
                         }
                         break;
 
@@ -329,19 +334,16 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
             alertDialogBuilder.setTitle("Disconnecting ...");
 
             // show it
-            runOnUiThread(new Runnable()
-            {
+            runOnUiThread(new Runnable() {
                 @Override
-                public void run()
-                {
+                public void run() {
                     // create alert dialog
                     alertDialog = alertDialogBuilder.create();
                     alertDialog.show();
 
                     ARCONTROLLER_ERROR_ENUM error = deviceController.stop();
 
-                    if (error != ARCONTROLLER_ERROR_ENUM.ARCONTROLLER_OK)
-                    {
+                    if (error != ARCONTROLLER_ERROR_ENUM.ARCONTROLLER_OK) {
                         finish();
                     }
                 }
@@ -450,88 +452,21 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
     @Override
     public void onFrameReceived(ARDeviceController deviceController, ARFrame frame)
     {
-        readyLock.lock();
+        byte[] data = frame.getByteData();
+        ByteArrayInputStream ins = new ByteArrayInputStream(data);
+        Bitmap bmp = BitmapFactory.decodeStream(ins);
 
-        if ((mediaCodec != null))
-        {
-            if (!isCodecConfigured && frame.isIFrame())
-            {
-                csdBuffer = getCSD(frame);
-                if (csdBuffer != null)
-                {
-                    configureMediaCodec();
-                }
-            }
-            if (isCodecConfigured && (!waitForIFrame || frame.isIFrame()))
-            {
-                waitForIFrame = false;
+        ImageView imgView = (ImageView) findViewById(R.id.imageView);
 
-                // Here we have either a good PFrame, or an IFrame
-                int index = -1;
-
-                try
-                {
-                    index = mediaCodec.dequeueInputBuffer(VIDEO_DEQUEUE_TIMEOUT);
-                }
-                catch (IllegalStateException e)
-                {
-                    Log.e(TAG, "Error while dequeue input buffer");
-                }
-                if (index >= 0)
-                {
-                    ByteBuffer b = buffers[index];
-                    b.clear();
-                    b.put(frame.getByteData(), 0, frame.getDataSize());
-                    //ByteBufferDumper.dumpBufferStartEnd("PFRAME", b, 10, 4);
-                    int flag = 0;
-                    if (frame.isIFrame())
-                    {
-                        //flag = MediaCodec.BUFFER_FLAG_SYNC_FRAME | MediaCodec.BUFFER_FLAG_CODEC_CONFIG;
-                    }
-
-                    try
-                    {
-                        mediaCodec.queueInputBuffer(index, 0, frame.getDataSize(), 0, flag);
-                    }
-                    catch (IllegalStateException e)
-                    {
-                        Log.e(TAG, "Error while queue input buffer");
-                    }
-
-                }
-                else
-                {
-                    waitForIFrame = true;
-                }
-            }
-
-            // Try to display previous frame
-            MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
-            int outIndex = -1;
-            try
-            {
-                outIndex = mediaCodec.dequeueOutputBuffer(info, 0);
-
-                while (outIndex >= 0)
-                {
-                    mediaCodec.releaseOutputBuffer(outIndex, true);
-                    outIndex = mediaCodec.dequeueOutputBuffer(info, 0);
-                }
-            }
-            catch (IllegalStateException e)
-            {
-                Log.e(TAG, "Error while dequeue input buffer (outIndex)");
-            }
-        }
-
-        readyLock.unlock();
+        FrameDisplay fDisplay = new FrameDisplay(imgView, bmp);
+        fDisplay.execute();
     }
 
 
     @Override
     public void onFrameTimeout(ARDeviceController deviceController)
     {
-        Log.i(TAG, "onFrameTimeout ..... " );
+        Log.i(TAG, "onFrameTimeout ..... ");
     }
 
     //region video
@@ -686,3 +621,35 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
 
     //endregion video
 }
+
+class FrameDisplay extends AsyncTask<Void, Void, Bitmap>
+{
+    private final WeakReference<ImageView> imageViewReference;
+    private final Bitmap bitmap;
+
+    public FrameDisplay(ImageView imageView, Bitmap bmp) {
+        // Use a WeakReference to ensure the ImageView can be garbage collected
+        imageViewReference = new WeakReference<ImageView>(imageView);
+        bitmap = bmp;
+    }
+
+    // Decode image in background.
+    @Override
+    protected Bitmap doInBackground(Void... params) {
+        return bitmap;
+    }
+
+    // Once complete, see if ImageView is still around and set bitmap.
+    @Override
+    protected void onPostExecute(Bitmap bmp) {
+        if (bmp != null) {
+            final ImageView imageView = imageViewReference.get();
+            if (imageView != null) {
+                imageView.setImageBitmap(bmp);
+            }
+        }
+    }
+}
+
+
+
