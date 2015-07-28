@@ -1,14 +1,12 @@
 package parrot.robclub.jumpingsumo;
 
-import android.annotation.SuppressLint;
+import java.io.ByteArrayInputStream;
+
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.media.MediaCodec;
-import android.media.MediaFormat;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
@@ -38,18 +36,13 @@ import com.parrot.arsdk.ardiscovery.ARDiscoveryDeviceNetService;
 import com.parrot.arsdk.ardiscovery.ARDiscoveryDeviceService;
 import com.parrot.arsdk.ardiscovery.ARDiscoveryException;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.lang.ref.WeakReference;
-import java.nio.ByteBuffer;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
-
 /**
- * Author: nguyenquockhai create on 16/07/2015 at Robotics Club.
- * Desc:
+ * Author: nguyenquockhai (nqkhai1706@gmail.com) create on 16/07/2015 at Robotics Club.
+ * Desc: This class is just based on PilotingActivity of BebopPilotingNewAPI project
+ * Addition, this project focus on receive stream video MJpeg of Jumping Sumo
  */
-public class PilotingActivity extends Activity implements ARDeviceControllerListener, ARDeviceControllerStreamListener, SurfaceHolder.Callback{
+public class PilotingActivity extends Activity implements ARDeviceControllerListener, ARDeviceControllerStreamListener, SurfaceHolder.Callback
+{
     private static String TAG = PilotingActivity.class.getSimpleName();
     public static String EXTRA_DEVICE_SERVICE = "pilotingActivity.extra.device.service";
 
@@ -57,7 +50,9 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
     public ARDiscoveryDeviceService service;
     public ARDiscoveryDevice device;
 
-    private Button jumBt;
+    private Button jumHightBt;
+    private Button jumLongBt;
+
     private Button turnLeftBt;
     private Button turnRightBt;
 
@@ -69,21 +64,9 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
     private AlertDialog alertDialog;
 
     private RelativeLayout view;
+    private JpegView frameView;
 
-    // video vars
-    private static final String VIDEO_MIME_TYPE = MediaFormat.MIMETYPE_VIDEO_AVC;
-    private static final int VIDEO_DEQUEUE_TIMEOUT = 33000;
-    private static final int VIDEO_WIDTH = 640;
-    private static final int VIDEO_HEIGHT = 368;
-    private SurfaceView sfView;
-    private MediaCodec mediaCodec;
-    private Lock readyLock;
-    private boolean isCodecConfigured = false;
-    private ByteBuffer csdBuffer;
-    private boolean waitForIFrame = true;
-    private ByteBuffer [] buffers;
-
-
+    //private ImageView imgView;
 
         @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -92,7 +75,7 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
         setContentView(R.layout.activity_piloting);
 
         initIHM();
-        initVideoVars();
+        initVideo();
 
         Intent intent = getIntent();
         service = intent.getParcelableExtra(EXTRA_DEVICE_SERVICE);
@@ -111,7 +94,6 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
             e.printStackTrace();
             Log.e(TAG, "Error: " + e.getError());
         }
-
 
         if (device != null)
         {
@@ -133,8 +115,8 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
     {
         view = (RelativeLayout) findViewById(R.id.piloting_view);
 
-        jumBt = (Button) findViewById(R.id.jumBt);
-        jumBt.setOnTouchListener(new View.OnTouchListener() {
+        jumHightBt = (Button) findViewById(R.id.jumHightBt);
+        jumHightBt.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 switch (event.getAction()) {
@@ -142,6 +124,31 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
                         v.setPressed(true);
                         if (deviceController != null) {
                             deviceController.getFeatureJumpingSumo().sendAnimationsJump(ARCOMMANDS_JUMPINGSUMO_ANIMATIONS_JUMP_TYPE_ENUM.ARCOMMANDS_JUMPINGSUMO_ANIMATIONS_JUMP_TYPE_HIGH);
+                        }
+                        break;
+
+                    case MotionEvent.ACTION_UP:
+                        v.setPressed(false);
+                        break;
+
+                    default:
+
+                        break;
+                }
+
+                return true;
+            }
+        });
+
+        jumLongBt = (Button) findViewById(R.id.jumLongBt);
+        jumLongBt.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        v.setPressed(true);
+                        if (deviceController != null) {
+                            deviceController.getFeatureJumpingSumo().sendAnimationsJump(ARCOMMANDS_JUMPINGSUMO_ANIMATIONS_JUMP_TYPE_ENUM.ARCOMMANDS_JUMPINGSUMO_ANIMATIONS_JUMP_TYPE_LONG);
                         }
                         break;
 
@@ -348,8 +355,6 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
                     }
                 }
             });
-            //alertDialog.show();
-
         }
     }
 
@@ -370,15 +375,13 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
         stopDeviceController();
     }
 
-    public void onUpdateBattery(final int percent)
-    {
+    public void onUpdateBattery(final int percent) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 batteryLabel.setText(String.format("%d%%", percent));
             }
         });
-
     }
 
 
@@ -452,14 +455,16 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
     @Override
     public void onFrameReceived(ARDeviceController deviceController, ARFrame frame)
     {
+        if (!frame.isIFrame())
+            return;
+
         byte[] data = frame.getByteData();
         ByteArrayInputStream ins = new ByteArrayInputStream(data);
         Bitmap bmp = BitmapFactory.decodeStream(ins);
+        frameView.setBitmap(bmp);
 
-        ImageView imgView = (ImageView) findViewById(R.id.imageView);
-
-        FrameDisplay fDisplay = new FrameDisplay(imgView, bmp);
-        fDisplay.execute();
+//        FrameDisplay fDisplay = new FrameDisplay(imgView, bmp);
+//        fDisplay.execute();
     }
 
 
@@ -469,139 +474,11 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
         Log.i(TAG, "onFrameTimeout ..... ");
     }
 
-    //region video
-    public void initVideoVars()
-    {
-        readyLock = new ReentrantLock();
-        applySetupVideo();
-    }
-
-
-    private void applySetupVideo()
-    {
-        String deviceModel = Build.DEVICE;
-        Log.d(TAG, "configuring HW video codec for device: [" + deviceModel + "]");
-        sfView = new SurfaceView(getApplicationContext());
-        sfView.setLayoutParams(new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.MATCH_PARENT));
-        sfView.getHolder().addCallback(this);
-
-        view.addView(sfView, 0);
-    }
-
-    @SuppressLint("NewApi")
-    public void reset()
-    {
-        /* This will be run either before or after decoding a frame. */
-        readyLock.lock();
-
-        view.removeView(sfView);
-        sfView = null;
-
-        releaseMediaCodec();
-
-        readyLock.unlock();
-    }
-
-    /**
-     * Configure and start media codec
-     * @param type
-     */
-    @SuppressLint("NewApi")
-    private void initMediaCodec(String type)
-    {
-        try
-        {
-            mediaCodec = MediaCodec.createDecoderByType(type);
-        }
-        catch (IOException e)
-        {
-            e.printStackTrace();
-        }
-
-        if (csdBuffer != null)
-        {
-            configureMediaCodec();
-        }
-    }
-
-    @SuppressLint("NewApi")
-    private void configureMediaCodec()
-    {
-        MediaFormat format = MediaFormat.createVideoFormat(VIDEO_MIME_TYPE, VIDEO_WIDTH, VIDEO_HEIGHT);
-        format.setByteBuffer("csd-0", csdBuffer);
-        //format.setInteger(MediaFormat.KEY_FRAME_RATE, 15);
-
-        mediaCodec.configure(format, sfView.getHolder().getSurface(), null, 0);
-        mediaCodec.start();
-
-        buffers = mediaCodec.getInputBuffers();
-
-
-        isCodecConfigured = true;
-    }
-
-    @SuppressLint("NewApi")
-    private void releaseMediaCodec()
-    {
-        if ((mediaCodec != null) && (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN))
-        {
-            if (isCodecConfigured)
-            {
-                mediaCodec.stop();
-                mediaCodec.release();
-            }
-            isCodecConfigured = false;
-            mediaCodec = null;
-        }
-    }
-
-    public ByteBuffer getCSD(ARFrame frame)
-    {
-        int spsSize;
-        if (frame.isIFrame())
-        {
-            byte[] data = frame.getByteData();
-            int searchIndex;
-            // we'll need to search the "00 00 00 01" pattern to find each header size
-            // Search start at index 4 to avoid finding the SPS "00 00 00 01" tag
-            for (searchIndex = 4; searchIndex <= frame.getDataSize() - 4; searchIndex ++)
-            {
-                if (0 == data[searchIndex  ] &&
-                        0 == data[searchIndex+1] &&
-                        0 == data[searchIndex+2] &&
-                        1 == data[searchIndex+3])
-                {
-                    break;  // PPS header found
-                }
-            }
-            spsSize = searchIndex;
-
-            // Search start at index 4 to avoid finding the PSS "00 00 00 01" tag
-            for (searchIndex = spsSize+4; searchIndex <= frame.getDataSize() - 4; searchIndex ++)
-            {
-                if (0 == data[searchIndex  ] &&
-                        0 == data[searchIndex+1] &&
-                        0 == data[searchIndex+2] &&
-                        1 == data[searchIndex+3])
-                {
-                    break;  // frame header found
-                }
-            }
-            int csdSize = searchIndex;
-
-            byte[] csdInfo = new byte[csdSize];
-            System.arraycopy(data, 0, csdInfo, 0, csdSize);
-            return ByteBuffer.wrap(csdInfo);
-        }
-        return null;
-    }
-
     @Override
     public void surfaceCreated(SurfaceHolder holder)
     {
-        readyLock.lock();
-        initMediaCodec(VIDEO_MIME_TYPE);
-        readyLock.unlock();
+        //readyLock.lock();
+        //readyLock.unlock();
     }
 
     @Override
@@ -609,46 +486,28 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
     {
     }
 
-
-    @SuppressLint("NewApi")
     @Override
     public void surfaceDestroyed(SurfaceHolder holder)
     {
-        readyLock.lock();
-        releaseMediaCodec();
-        readyLock.unlock();
+        //readyLock.lock();
+        //readyLock.unlock();
+    }
+
+    //region video
+    public void initVideo()
+    {
+        //imgView = (ImageView) findViewById(R.id.imageView);
+
+        String deviceModel = Build.DEVICE;
+        Log.d(TAG, "configuring HW video codec for device: [" + deviceModel + "]");
+        frameView = new JpegView(getApplicationContext());
+        frameView.setLayoutParams(new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.MATCH_PARENT));
+        frameView.getHolder().addCallback(this);
+
+        view.addView(frameView, 0);
     }
 
     //endregion video
-}
-
-class FrameDisplay extends AsyncTask<Void, Void, Bitmap>
-{
-    private final WeakReference<ImageView> imageViewReference;
-    private final Bitmap bitmap;
-
-    public FrameDisplay(ImageView imageView, Bitmap bmp) {
-        // Use a WeakReference to ensure the ImageView can be garbage collected
-        imageViewReference = new WeakReference<ImageView>(imageView);
-        bitmap = bmp;
-    }
-
-    // Decode image in background.
-    @Override
-    protected Bitmap doInBackground(Void... params) {
-        return bitmap;
-    }
-
-    // Once complete, see if ImageView is still around and set bitmap.
-    @Override
-    protected void onPostExecute(Bitmap bmp) {
-        if (bmp != null) {
-            final ImageView imageView = imageViewReference.get();
-            if (imageView != null) {
-                imageView.setImageBitmap(bmp);
-            }
-        }
-    }
 }
 
 
