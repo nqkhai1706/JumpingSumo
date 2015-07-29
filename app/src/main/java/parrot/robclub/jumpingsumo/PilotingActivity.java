@@ -11,11 +11,8 @@ import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.MotionEvent;
-import android.view.SurfaceHolder;
-import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Button;
-import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
@@ -41,7 +38,7 @@ import com.parrot.arsdk.ardiscovery.ARDiscoveryException;
  * Desc: This class is just based on PilotingActivity of BebopPilotingNewAPI project
  * Addition, this project focus on receive stream video MJpeg of Jumping Sumo
  */
-public class PilotingActivity extends Activity implements ARDeviceControllerListener, ARDeviceControllerStreamListener, SurfaceHolder.Callback
+public class PilotingActivity extends Activity implements ARDeviceControllerListener, ARDeviceControllerStreamListener
 {
     private static String TAG = PilotingActivity.class.getSimpleName();
     public static String EXTRA_DEVICE_SERVICE = "pilotingActivity.extra.device.service";
@@ -178,7 +175,7 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
                         v.setPressed(true);
                         if (deviceController != null)
                         {
-                            deviceController.getFeatureJumpingSumo().setPilotingPCMDTurn((byte) 50);
+                            deviceController.getFeatureJumpingSumo().setPilotingPCMDTurn((byte) 10);
                             deviceController.getFeatureJumpingSumo().setPilotingPCMDFlag((byte) 1);
 
                         }
@@ -212,7 +209,7 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
                         v.setPressed(true);
                         if (deviceController != null)
                         {
-                            deviceController.getFeatureJumpingSumo().setPilotingPCMDTurn((byte) -50);
+                            deviceController.getFeatureJumpingSumo().setPilotingPCMDTurn((byte) -10);
                             deviceController.getFeatureJumpingSumo().setPilotingPCMDFlag((byte) 1);
                         }
                         break;
@@ -246,7 +243,7 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
                         v.setPressed(true);
                         if (deviceController != null)
                         {
-                            deviceController.getFeatureJumpingSumo().setPilotingPCMDSpeed((byte) 50);
+                            deviceController.getFeatureJumpingSumo().setPilotingPCMDSpeed((byte) 100);
                             deviceController.getFeatureJumpingSumo().setPilotingPCMDFlag((byte) 1);
                         }
                         break;
@@ -278,7 +275,7 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
                     case MotionEvent.ACTION_DOWN:
                         v.setPressed(true);
                         if (deviceController != null) {
-                            deviceController.getFeatureJumpingSumo().setPilotingPCMDSpeed((byte) -50);
+                            deviceController.getFeatureJumpingSumo().setPilotingPCMDSpeed((byte) -100);
                             deviceController.getFeatureJumpingSumo().setPilotingPCMDFlag((byte) 1);
                         }
                         break;
@@ -316,8 +313,6 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
 
             // set title
             alertDialogBuilder.setTitle("Connecting ...");
-
-
             // create alert dialog
             alertDialog = alertDialogBuilder.create();
             alertDialog.show();
@@ -339,7 +334,6 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
 
             // set title
             alertDialogBuilder.setTitle("Disconnecting ...");
-
             // show it
             runOnUiThread(new Runnable() {
                 @Override
@@ -365,7 +359,6 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
         {
             deviceController.stop();
         }
-
         super.onStop();
     }
 
@@ -398,7 +391,6 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        //alertDialog.hide();
                         alertDialog.dismiss();
                     }
                 });
@@ -407,16 +399,14 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
 
             case ARCONTROLLER_DEVICE_STATE_STOPPED:
                 //The deviceController is stoped
-                Log.i(TAG, "ARCONTROLLER_DEVICE_STATE_STOPPED ....." );
+                Log.i(TAG, "ARCONTROLLER_DEVICE_STATE_STOPPED .....");
 
                 deviceController.dispose();
-                deviceController = null;
 
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run()
                     {
-                        //alertDialog.hide();
                         alertDialog.dismiss();
                         finish();
                     }
@@ -455,18 +445,17 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
     @Override
     public void onFrameReceived(ARDeviceController deviceController, ARFrame frame)
     {
-        if (!frame.isIFrame())
-            return;
+        if (frame.isIFrame()) {
+            byte[] data = frame.getByteData();
+            ByteArrayInputStream ins = new ByteArrayInputStream(data);
+            Bitmap bmp = BitmapFactory.decodeStream(ins);
 
-        byte[] data = frame.getByteData();
-        ByteArrayInputStream ins = new ByteArrayInputStream(data);
-        Bitmap bmp = BitmapFactory.decodeStream(ins);
-        frameView.setBitmap(bmp);
+            frameView.setBitmap(bmp);
 
 //        FrameDisplay fDisplay = new FrameDisplay(imgView, bmp);
 //        fDisplay.execute();
+        }
     }
-
 
     @Override
     public void onFrameTimeout(ARDeviceController deviceController)
@@ -474,40 +463,15 @@ public class PilotingActivity extends Activity implements ARDeviceControllerList
         Log.i(TAG, "onFrameTimeout ..... ");
     }
 
-    @Override
-    public void surfaceCreated(SurfaceHolder holder)
-    {
-        //readyLock.lock();
-        //readyLock.unlock();
-    }
-
-    @Override
-    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height)
-    {
-    }
-
-    @Override
-    public void surfaceDestroyed(SurfaceHolder holder)
-    {
-        //readyLock.lock();
-        //readyLock.unlock();
-    }
-
-    //region video
     public void initVideo()
     {
         //imgView = (ImageView) findViewById(R.id.imageView);
-
         String deviceModel = Build.DEVICE;
         Log.d(TAG, "configuring HW video codec for device: [" + deviceModel + "]");
         frameView = new JpegView(getApplicationContext());
         frameView.setLayoutParams(new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.MATCH_PARENT));
-        frameView.getHolder().addCallback(this);
-
         view.addView(frameView, 0);
     }
-
-    //endregion video
 }
 
 
